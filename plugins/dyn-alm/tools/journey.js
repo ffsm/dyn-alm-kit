@@ -7,6 +7,7 @@ const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
 const T = require("./template");
+require("./selfupdate").autoUpdate(); // kit desatualizado se atualiza sozinho (mensagens vão para stderr; --json segue limpo)
 
 const a = T.parseArgs();
 const cwd = path.resolve(a.cwd || ".");
@@ -45,11 +46,14 @@ const solDirs = [config.solution.folder, config.solution.webresources];
 f.solution = config.solution.name;
 f.devUrlConfigured = !String(config.environments.dev.url).startsWith("TODO");
 if (!f.devUrlConfigured) state.warnings.push("URL do Dev não configurada em devops.config.json");
-// Scripts da esteira ficam copiados no repo: avisa quando são de outra versão do kit.
+// Scripts vêm do kit (dyn-alm run); workflows/docs são versionados e atualizados pelo upgrade.
 const metaPath = path.join(cwd, ".dyn-alm", "template.json");
 f.template = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, "utf8")).version : null;
-if (f.template && f.template !== T.VERSION) {
-    state.warnings.push(`Scripts do repo são do kit ${f.template}; o kit instalado é ${T.VERSION} — dyn-alm upgrade (ou dyn-alm upgrade --all para todos os repos)`);
+f.toolsFromKit = T.toolsFromKit(cwd);
+if (f.template && !f.toolsFromKit) {
+    state.warnings.push("Os scripts deste repo ainda estão no Git — dyn-alm upgrade (ou --all) faz eles passarem a vir sempre do kit");
+} else if (f.template && T.diffFiles(cwd, T.MANAGED).length) {
+    state.warnings.push(`Workflows/docs do repo diferem do kit ${T.VERSION} — dyn-alm upgrade (ou --all para todos os repos)`);
 }
 
 // ---------- Git ----------

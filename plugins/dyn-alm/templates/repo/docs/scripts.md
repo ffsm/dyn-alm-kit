@@ -1,6 +1,7 @@
 # Scripts da esteira
 
 Todos em `scripts/`, Node puro (sem dependências, sem PowerShell). Rode pela raiz do repo com `npm run <comando> -- <args>`.
+`scripts/` vem do kit `dyn-alm`: fica fora do Git e cada `npm run` copia a versão do kit instalado (`dyn-alm run scripts/<x>.js`) — o kit se atualiza sozinho. Precisa do kit instalado na máquina e no runner da esteira.
 Configuração em `devops.config.json` (nome da solution, pastas, `baseVersion`, URLs dos ambientes, Artifactory).
 
 | Comando | Script | Mexe em ambiente? | Mexe no Git? |

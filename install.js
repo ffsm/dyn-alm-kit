@@ -4,6 +4,9 @@
 //   node install.js              instala a CLI `dyn-alm` (global) e, se houver Claude Code, o plugin
 //   node install.js --update     atualiza (git pull se houver remoto + plugin)
 //   node install.js --uninstall  remove a CLI e o plugin
+//   node install.js --plugin     só renova o plugin do Claude Code (a atualização automática do kit usa)
+//
+// Depois de instalado, o kit se atualiza sozinho (de hora em hora, ao usar o dyn-alm): ver tools/selfupdate.js.
 //
 // No Windows também dá para dar dois cliques em install.cmd. Pode rodar de novo sem problema.
 const fs = require("fs");
@@ -128,7 +131,13 @@ function uninstall() {
         run("claude", ["plugin", "marketplace", "remove", MARKETPLACE]).ok ? ok(`marketplace ${MARKETPLACE} removido`) : warn("marketplace não estava configurado");
     }
     run("npm", ["uninstall", "-g", "dyn-alm-kit"]).ok ? ok("CLI dyn-alm removida") : warn("CLI não estava instalada");
-    console.log("\n  A pasta do kit não foi apagada. Repos de solution já criados continuam funcionando (os scripts ficam neles).\n");
+    console.log("\n  A pasta do kit não foi apagada. Atenção: os repos de solution rodam os scripts do kit (dyn-alm run) —\n  sem o kit instalado, npm run build/deploy deixam de funcionar.\n");
+}
+
+// --plugin: só renova o plugin do Claude Code (usado pela atualização automática do kit, depois do git pull).
+if (args.includes("--plugin")) {
+    if (has("claude")) installPlugin();
+    process.exit(0);
 }
 
 console.log(`\n\x1b[1mdyn-alm-kit ${version()}\x1b[0m — ${KIT}`);

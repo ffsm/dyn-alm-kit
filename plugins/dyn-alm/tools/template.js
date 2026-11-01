@@ -1,4 +1,4 @@
-// Funções compartilhadas por scaffold.js e upgrade.js.
+// Funções compartilhadas por scaffold.js, upgrade.js e run.js.
 const fs = require("fs");
 const path = require("path");
 
@@ -9,8 +9,11 @@ const TEMPLATE_DIR = path.join(SKILL_DIR, "templates", "repo");
 const PLUGIN_JSON = path.join(SKILL_DIR, ".claude-plugin", "plugin.json");
 const VERSION = JSON.parse(fs.readFileSync(PLUGIN_JSON, "utf8")).version;
 
-// Arquivos que o upgrade mantém em sincronia com a skill (o resto é do repo).
-const MANAGED = [/^scripts\//, /^\.github\/workflows\//, /^\.claude\/commands\//, /^docs\/scripts\.md$/, /^\.gitattributes$/];
+// Ferramentas: ficam fora do Git e são copiadas do kit a cada `dyn-alm run` (sempre a versão instalada).
+const TOOLS = [/^scripts\//, /^\.claude\/commands\//];
+const TOOLS_GITIGNORE = "# Ferramentas do kit dyn-alm: copiadas do kit a cada execução (dyn-alm run), fora do Git\n/scripts/\n/.claude/commands/\n";
+// Gerenciados versionados: o upgrade atualiza e alguém commita (o GitHub só lê workflows commitados).
+const MANAGED = [/^\.github\/workflows\//, /^docs\/scripts\.md$/, /^\.gitattributes$/];
 
 function listFiles(base, dir = base) {
     return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -24,6 +27,58 @@ function render(rel, vars) {
     const raw = fs.readFileSync(path.join(TEMPLATE_DIR, rel));
     if (!/\.(md|json|yml|yaml)$/.test(rel)) return raw;
     return Buffer.from(raw.toString("utf8").replace(/\{\{(\w+)\}\}/g, (m, k) => (k in vars ? vars[k] : m)));
+}
+
+// Placeholders de um repo ALM existente.
+function repoVars(target) {
+    const config = JSON.parse(fs.readFileSync(path.join(target, "devops.config.json"), "utf8"));
+    const solutionXml = fs.readFileSync(path.join(target, config.solution.folder, "Other", "Solution.xml"), "utf8");
+    return {
+        SOLUTION: config.solution.name,
+        PREFIX: (solutionXml.match(/<CustomizationPrefix>([^<]+)<\/CustomizationPrefix>/) || [])[1],
+        DEV_URL: config.environments.dev.url,
+        REPO: path.basename(target),
+    };
+}
+
+// Arquivos do template (do grupo `patterns`) que diferem no repo. Compara ignorando CRLF/LF.
+function diffFiles(target, patterns, vars = repoVars(target)) {
+    const out = [];
+    for (const rel of listFiles(TEMPLATE_DIR).filter((f) => patterns.some((re) => re.test(f)))) {
+        const dest = path.join(target, rel);
+        const next = render(rel, vars);
+        if (!fs.existsSync(dest)) out.push({ rel, kind: "novo", next });
+        else if (fs.readFileSync(dest).toString("utf8").replace(/\r\n/g, "\n") !== next.toString("utf8").replace(/\r\n/g, "\n")) {
+            out.push({ rel, kind: "alterado", next });
+        }
+    }
+    return out;
+}
+
+function writeFiles(target, changes) {
+    for (const c of changes) {
+        fs.mkdirSync(path.dirname(path.join(target, c.rel)), { recursive: true });
+        fs.writeFileSync(path.join(target, c.rel), c.next);
+    }
+}
+
+// Repo de referência (o template é gerado dele) não tem .dyn-alm/template.json: mantém os scripts no Git.
+const isReference = (target) => !fs.existsSync(path.join(target, ".dyn-alm", "template.json"));
+// Migrado = scripts saíram do Git e vêm do kit.
+const toolsFromKit = (target) => {
+    const gi = path.join(target, ".gitignore");
+    return fs.existsSync(gi) && /^\/scripts\/\s*$/m.test(fs.readFileSync(gi, "utf8"));
+};
+
+// Sobe pastas até achar devops.config.json.
+function findRepo(start) {
+    let dir = path.resolve(start);
+    for (;;) {
+        if (fs.existsSync(path.join(dir, "devops.config.json"))) return dir;
+        const up = path.dirname(dir);
+        if (up === dir) return null;
+        dir = up;
+    }
 }
 
 function parseArgs(argv = process.argv.slice(2)) {
@@ -43,4 +98,7 @@ function fail(msg) {
     process.exit(1);
 }
 
-module.exports = { PLUGIN_JSON, SKILL_DIR, TEMPLATE_DIR, VERSION, MANAGED, listFiles, render, parseArgs, fail };
+module.exports = {
+    PLUGIN_JSON, SKILL_DIR, TEMPLATE_DIR, VERSION, TOOLS, TOOLS_GITIGNORE, MANAGED,
+    listFiles, render, repoVars, diffFiles, writeFiles, isReference, toolsFromKit, findRepo, parseArgs, fail,
+};

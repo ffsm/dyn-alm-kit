@@ -85,12 +85,13 @@ for (const rel of files) {
 const repoName = path.basename(target).toLowerCase().replace(/[^a-z0-9-]+/g, "-");
 const pkg = {
     name: repoName, version: "1.0.0", private: true, description: `ALM da solution ${a.solution} (Dataverse)`,
+    // scripts/ fica fora do Git: `dyn-alm run` copia a versão do kit instalado e executa.
     scripts: {
-        build: "node scripts/build.js", deploy: "node scripts/deploy.js", sync: "node scripts/sync-from-env.js",
-        drift: "node scripts/sync-from-env.js --check", status: "node scripts/status.js",
-        "new-webresource": "node scripts/new-webresource.js", "release:start": "node scripts/release-start.js",
-        "release:finish": "node scripts/release-finish.js", release: "node scripts/release.js",
-        publish: "node scripts/publish-artifact.js", "release-notes": "node scripts/release-notes.js",
+        build: "dyn-alm run scripts/build.js", deploy: "dyn-alm run scripts/deploy.js", sync: "dyn-alm run scripts/sync-from-env.js",
+        drift: "dyn-alm run scripts/sync-from-env.js --check", status: "dyn-alm run scripts/status.js",
+        "new-webresource": "dyn-alm run scripts/new-webresource.js", "release:start": "dyn-alm run scripts/release-start.js",
+        "release:finish": "dyn-alm run scripts/release-finish.js", release: "dyn-alm run scripts/release.js",
+        publish: "dyn-alm run scripts/publish-artifact.js", "release-notes": "dyn-alm run scripts/release-notes.js",
     },
     engines: { node: ">=20" },
 };
@@ -126,7 +127,7 @@ Solution Dataverse **${a.solution}** (prefixo \`${vars.PREFIX}_\`) versionada no
 - Scripts: [docs/scripts.md](docs/scripts.md)
 - Webresources (o que se edita): \`src/webresources/\` · metadados: \`solution/\`
 
-Gerado pelo kit \`dyn-alm\` v${T.VERSION}. Atualize os scripts com \`dyn-alm upgrade\` (ou \`/dyn-alm:upgrade\` no Claude Code).
+Gerado pelo kit \`dyn-alm\` v${T.VERSION}. Os scripts da esteira (\`scripts/\`) vêm do kit a cada \`npm run\` e ficam fora do Git — precisa do kit instalado. Workflows e docs do kit: \`dyn-alm upgrade\`.
 `);
 fs.mkdirSync(path.join(target, ".dyn-alm"), { recursive: true });
 fs.writeFileSync(path.join(target, ".dyn-alm", "template.json"), JSON.stringify({ version: T.VERSION, scaffoldedAt: new Date().toISOString(), mode: a.mode }, null, 2) + "\n");

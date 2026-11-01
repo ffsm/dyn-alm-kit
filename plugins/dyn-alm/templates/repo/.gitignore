@@ -6,3 +6,7 @@ node_modules/
 /solution/WebResources/**
 !/solution/WebResources/**/
 !/solution/WebResources/**/*.data.xml
+
+# Ferramentas do kit dyn-alm: copiadas do kit a cada execução (dyn-alm run), fora do Git
+/scripts/
+/.claude/commands/

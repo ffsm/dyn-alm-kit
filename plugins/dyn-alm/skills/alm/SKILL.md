@@ -10,7 +10,8 @@ Repositórios gerados pelo kit `dyn-alm` seguem um contrato. Antes de agir num d
 
 ## Princípios
 1. **Git é a fonte da verdade.** O pacote é gerado do repositório (`npm run build`), nunca exportado do ambiente para release.
-2. **Devs editam só `src/`** (hoje `src/webresources/`). `solution/` guarda os metadados no formato do `pac solution unpack` e é o espelho do ambiente usado para detectar drift.
+2. **Devs editam só `src/`** (hoje `src/webresources/`). `solution/` guarda os metadados no formato do `pac solution unpack` e é o espelho do ambiente usado para detectar drift. `scripts/` e `.claude/commands/` são **ferramentas do kit**: fora do Git, copiadas do kit a cada `npm run` (`dyn-alm run`) — não edite no repo, evolua no kit.
+6. **O kit se atualiza sozinho** (de hora em hora, ao usar o `dyn-alm`/jornada): `git pull` na pasta do kit + plugin. Não pergunte ao usuário; se a pasta do kit estiver em outra branch ou com alterações, ele só avisa. Workflows/docs versionados no repo: `dyn-alm upgrade` (ou `--all`).
 3. **Mudança feita direto no ambiente é drift**: volta para o Git por `npm run sync -- dev --merge` (merge de 3 vias com base na tag `deployed/dev`), nunca copiando arquivo à mão.
 4. **Fluxo**: `main` = produção · `release/X.Y.Z` = o que o Dev reflete e o CoE vai levar · `feature/*` e `fix/*` saem da release e voltam por PR. Detalhes: [references/fluxo.md](../../references/fluxo.md).
 5. **Versão** = `<baseVersion do devops.config.json>.<nº de commits>` — automática, determinística; o `release:start` grava o baseVersion.

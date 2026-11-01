@@ -21,3 +21,4 @@ Repositório ALM para Dynamics 365 (kit `dyn-alm`): a solution `{{SOLUTION}}` é
 - **Nunca use `--force`, `--replace`, `--allow-extra` ou `--skip-prod-check` por conta própria.** Exit 3 = drift (alguém mexeu no ambiente → `npm run sync -- dev --merge`); exit 4 = Dev ocupado pela branch de outra pessoa. Explique e pergunte.
 - Não apague nem mova as tags `deployed/*` e `v*` (base do merge de 3 vias e marco de produção).
 - Scripts são Node puro (CommonJS, sem dependências) — a empresa restringe PowerShell. Workflows usam `shell: cmd`.
+- `scripts/` e `.claude/commands/` são **ferramentas do kit dyn-alm**: ficam fora do Git e são copiados do kit a cada `npm run …` (`dyn-alm run`). Não edite: a mudança é sobrescrita — evolua no kit.

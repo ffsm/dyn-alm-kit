@@ -23,6 +23,9 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
+      - name: Kit dyn-alm (os scripts da esteira vêm dele)
+        run: dyn-alm version
+
       - run: npm run build
       - run: npm run release
       - run: npm run publish

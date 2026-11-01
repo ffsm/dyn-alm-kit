@@ -34,6 +34,9 @@ jobs:
           fetch-depth: 0          # histórico completo: versão = nº de commits, PRs = git log
           fetch-tags: true
 
+      - name: Kit dyn-alm (os scripts da esteira vêm dele)
+        run: dyn-alm version
+
       - name: Build a partir do Git
         run: npm run build
 

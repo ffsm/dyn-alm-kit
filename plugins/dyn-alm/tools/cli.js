@@ -4,6 +4,7 @@
 //   dyn-alm jornada [--json]                 onde estou na jornada e qual o próximo comando
 //   dyn-alm init [--zip <arquivo>]           wizard: cria repo ALM (greenfield ou brownfield)
 //   dyn-alm feature                          wizard: abre feature/fix a partir da release aberta
+//   dyn-alm run <scripts/x.js> [args]        roda um script da esteira com as ferramentas do kit (npm scripts do repo)
 //   dyn-alm inspect <zip> [--json]           o que há num zip de solution
 //   dyn-alm doctor                           checa pré-requisitos e o repo
 //   dyn-alm github check|login|create <dono/nome>|pr   publica o repo no GitHub e abre PRs (via gh)
@@ -20,6 +21,8 @@ const T = require("./template");
 const TOOLS = __dirname;
 const [cmd, ...rest] = process.argv.slice(2);
 const a = T.parseArgs(rest);
+// Kit desatualizado se atualiza sozinho (no máximo de hora em hora). `version` fica de fora: é usado em checagens.
+if (cmd !== "version") require("./selfupdate").autoUpdate();
 
 const tool = (name, args, opts = {}) => spawnSync("node", [path.join(TOOLS, name), ...args], { stdio: opts.capture ? "pipe" : "inherit", encoding: "utf8", cwd: opts.cwd });
 const sh = (c, args, cwd) => { const r = spawnSync(c, args, { encoding: "utf8", cwd }); return { ok: r.status === 0 && !r.error, out: (r.stdout || "").trim() }; };
@@ -225,6 +228,7 @@ const routes = {
     journey: () => routes.jornada(),
     init,
     feature,
+    run: () => process.exit(tool("run.js", rest).status ?? 1),
     inspect: () => process.exit(tool("inspect-solution.js", rest).status),
     doctor,
     github: () => process.exit(tool("github.js", rest).status),
@@ -233,7 +237,7 @@ const routes = {
     version: () => console.log(T.VERSION),
 };
 if (!cmd || cmd === "help" || cmd === "--help" || !routes[cmd]) {
-    console.log(fs.readFileSync(__filename, "utf8").split("\n").slice(1, 12).map((l) => l.replace(/^\/\/ ?/, "")).join("\n"));
+    console.log(fs.readFileSync(__filename, "utf8").split("\n").slice(1, 13).map((l) => l.replace(/^\/\/ ?/, "")).join("\n"));
     process.exit(cmd && !["help", "--help"].includes(cmd) ? 1 : 0);
 }
 Promise.resolve(routes[cmd]()).then(() => lines && process.exit(0), (e) => T.fail(e.stack || e.message));

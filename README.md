@@ -31,8 +31,8 @@ o plugin `dyn-alm`. Pode rodar de novo sem problema.
 | Quero | Comando |
 |---|---|
 | Instalar | `node install.js` (ou `install.cmd`) |
-| Atualizar | `node install.js --update` — `git pull` no kit + plugin |
-| Remover | `node install.js --uninstall` — repos de solution já criados continuam funcionando |
+| Atualizar | **automático**: de hora em hora, ao usar o `dyn-alm`, o kit faz `git pull` da main e renova o plugin (desliga com `DYN_ALM_NO_UPDATE=1`). Manual: `node install.js --update` |
+| Remover | `node install.js --uninstall` — atenção: os repos de solution rodam os scripts do kit (`dyn-alm run`) |
 
 Depois de instalar: no terminal, `dyn-alm jornada` dentro de um repo de solution (ou `dyn-alm init` para criar um);
 no Claude Code, abra uma **sessão nova** e digite `/dyn-alm:jornada`.
@@ -110,7 +110,9 @@ dyn-alm-kit/
 2. Regenere o template e suba a versão: `dyn-alm template --from <repo-de-referencia> --bump minor`
 3. `claude plugin validate .` e commit + tag (`claude plugin tag plugins/dyn-alm` cria `dyn-alm--vX.Y.Z`).
 4. Quem usa: `node install.js --update`.
-5. Em todos os repos de solution de uma vez: `dyn-alm upgrade --all` (simula) → `dyn-alm upgrade --all --apply` (branch `chore/kit-<versão>` a partir da release aberta, commit; depois push + PR em cada um). Os scripts ficam copiados em cada repo de propósito: a esteira roda do checkout, commit antigo rebuilda igual e um bug no kit não derruba todos os repos.
+5. Scripts da esteira: nada a fazer — ficam fora do Git e cada `npm run` copia a versão do kit (`dyn-alm run`). Workflows/docs versionados: `dyn-alm upgrade --all` (simula) → `--apply` (branch `chore/kit-<versão>` a partir da release aberta + commit em cada repo; depois push + PR). Repo antigo (scripts no Git): o mesmo `upgrade` migra uma vez.
+   Consequências: o runner da esteira precisa do kit instalado (`dyn-alm` no PATH do usuário do runner); um commit antigo rebuilda com os scripts atuais do kit.
+   Repo de referência (`dyn-devops-poc`, sem `.dyn-alm/template.json`): continua com os scripts no Git — é de onde `dyn-alm template --from` gera o template; leve para ele as mudanças feitas direto no template antes de regenerar.
 
 Sem subir a versão no `plugin.json`, o Claude Code não entrega a mudança para quem já instalou.
 
