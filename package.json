@@ -1,6 +1,6 @@
 {
   "name": "dyn-alm-kit",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "description": "Kit ALM para solutions Dynamics 365 / Dataverse: CLI (sem IA) + plugin do Claude Code",
   "bin": {

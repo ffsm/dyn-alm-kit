@@ -42,6 +42,15 @@ function prereqs() {
     if (!has("git")) fail("Git não encontrado"); ok("Git");
     if (has("pac")) ok("PAC CLI");
     else warn("PAC CLI não encontrado — necessário para falar com o Dataverse: dotnet tool install --global Microsoft.PowerApps.CLI.Tool");
+    // Só avisa (o dev instala manualmente). Mesma checagem do `dyn-alm github check`: acha o gh fora do PATH.
+    const ghc = (() => {
+        const r = spawnSync(process.execPath, [path.join(KIT, "plugins", "dyn-alm", "tools", "github.js"), "check", "--json"], { cwd: KIT, encoding: "utf8" });
+        try { return JSON.parse(r.stdout); } catch { return {}; }
+    })();
+    if (!ghc.gh) warn(`GitHub CLI (gh) não encontrado — necessário para publicar o repo e abrir PRs: ${ghc.install || "instale manualmente (https://cli.github.com)"}`);
+    else if (!ghc.loggedIn) warn(`GitHub CLI ${ghc.ghVersion} sem login — depois da instalação: dyn-alm github login`);
+    else if (ghc.workflowScope === false) warn(`GitHub CLI logado como ${ghc.user}, sem o escopo workflow (o push dos repos ALM falharia) — depois: dyn-alm github login --refresh`);
+    else ok(`GitHub CLI ${ghc.ghVersion} (logado como ${ghc.user})`);
     const claude = has("claude");
     claude ? ok("Claude Code (o plugin será instalado)") : warn("Claude Code não encontrado — instalo só a CLI (o plugin pode ser instalado depois rodando isto de novo)");
     return { claude };

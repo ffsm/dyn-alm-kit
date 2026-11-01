@@ -35,7 +35,8 @@ Se `$ARGUMENTS` já deixa claro, pule. Senão pergunte:
 Working tree limpa → `git merge origin/release/X.Y.Z` (ou local). Conflitos em `src/`: mostre as três versões, proponha a resolução que preserva as duas intenções e pergunte quando forem incompatíveis. Conflitos em `solution/`: prefira os metadados mais recentes e avise mudanças de nome/ID.
 
 ## 2c. Preparar o PR
-1. Mostre o que vai no PR: `git log --oneline origin/release/X.Y.Z..HEAD` e arquivos alterados em `src/`/`solution/`.
+0. `node "${CLAUDE_PLUGIN_ROOT}/tools/github.js" check --json`. Sem remoto (`hasRemote: false`) → faça antes a §9 do `init` (`${CLAUDE_PLUGIN_ROOT}/skills/init/SKILL.md`: instalar/logar o `gh`, criar o repo, publicar). Sem `gh` mas com remoto → siga com push + link (passo 3).
+1. Mostre o que vai no PR: `git log --oneline <release>..HEAD` (`origin/release/X.Y.Z` se existir, senão a local) e arquivos alterados em `src/`/`solution/`.
 2. Se a release avançou desde que a branch saiu, ofereça o 2b antes.
-3. Sugira título (vira linha das release notes) e descrição; `git push -u origin <branch>`; abra o PR **para `release/X.Y.Z`** com `gh pr create --base release/X.Y.Z` se o `gh` existir, senão mostre o link `…/compare/release/X.Y.Z...<branch>?expand=1`.
+3. Sugira título (vira linha das release notes) e descrição e, confirmados, rode `node "${CLAUDE_PLUGIN_ROOT}/tools/github.js" pr --base release/X.Y.Z --title "…" --body "…"` (faz o push e abre o PR **para `release/X.Y.Z`**; o `gh` é achado mesmo fora do PATH). Sem `gh`: `git push -u origin <branch>` e mostre o link `…/compare/release/X.Y.Z...<branch>?expand=1`. Permissão negada (push/PR é envio para fora) → não contorne; entregue `! dyn-alm github pr --base release/X.Y.Z --title "…" --body "…"`.
 4. Lembre: depois do merge, o Dev volta para a release (automático com a esteira; senão, deploy da release) e `npm run status -- dev` deve dar PRONTO antes do CoE.

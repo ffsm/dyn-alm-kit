@@ -66,9 +66,15 @@ function detectDrift(env, { keepBranch = true, zip: sourceZip } = {}) {
 
     const tag = deployedTag(env.name);
     const hasTag = L.run("git", ["rev-parse", "-q", "--verify", `refs/tags/${tag}`], { capture: true, allowFail: true }).status === 0;
-    const base = hasTag ? L.git(["rev-list", "-n", "1", tag]) : L.git(["rev-parse", "HEAD"]);
+    // Sem tag (nenhum deploy ainda), o ambiente está no máximo onde a main estava quando a branch saiu:
+    // comparar com HEAD acusaria como drift a própria alteração de uma feature no 1º deploy.
+    const { main } = L.openRelease();
+    const mergeBase = hasTag ? null : L.run("git", ["merge-base", "HEAD", main], { capture: true, allowFail: true });
+    const base = hasTag ? L.git(["rev-list", "-n", "1", tag])
+        : mergeBase.status === 0 ? mergeBase.out : L.git(["rev-parse", "HEAD"]);
+    const baseName = hasTag ? tag : mergeBase.status === 0 ? `${main} (ponto em que a branch saiu)` : "HEAD";
     if (!hasTag) {
-        console.warn(`⚠ Tag ${tag} não existe: comparando o ambiente com HEAD. ` +
+        console.warn(`⚠ Tag ${tag} não existe: comparando o ambiente com ${baseName}. ` +
             "O merge de 3 vias só fica preciso depois do primeiro deploy pela esteira.");
     }
 
@@ -76,7 +82,7 @@ function detectDrift(env, { keepBranch = true, zip: sourceZip } = {}) {
     let zip = path.join(workDir, `${env.name}.zip`);
     if (sourceZip) {
         zip = path.resolve(sourceZip);
-        L.log(`Comparando ${zip} com ${hasTag ? tag : "HEAD"}`);
+        L.log(`Comparando ${zip} com ${baseName}`);
     } else {
         L.log(`Exportando ${L.SOLUTION} de ${env.name} (${env.url})`);
         L.exportSolution(env, zip);
@@ -100,7 +106,14 @@ function detectDrift(env, { keepBranch = true, zip: sourceZip } = {}) {
         L.git(["add", "-A", L.config.solution.folder, L.config.solution.webresources], { cwd: wt });
         const changed = L.git(["diff", "--cached", "--name-status"], { cwd: wt });
         if (!changed) {
-            L.log(`Sem drift: ${env.name} está igual a ${hasTag ? tag : "HEAD"} (${base.slice(0, 7)})`);
+            L.log(`Sem drift: ${env.name} está igual a ${baseName} (${base.slice(0, 7)})`);
+            return { drift: false, installed: true };
+        }
+        // Sem tag, o ambiente também pode já estar com esta própria branch: igual ao HEAD não é drift.
+        const head = L.git(["rev-parse", "HEAD"]);
+        if (!hasTag && head !== base && L.run("git", ["diff", "--cached", "--quiet", head, "--",
+            L.config.solution.folder, L.config.solution.webresources], { cwd: wt, capture: true, allowFail: true }).status === 0) {
+            L.log(`Sem drift: ${env.name} está igual a HEAD (${head.slice(0, 7)})`);
             return { drift: false, installed: true };
         }
 
@@ -108,7 +121,7 @@ function detectDrift(env, { keepBranch = true, zip: sourceZip } = {}) {
         if (!keepBranch) return { drift: true, installed: true, changed };
 
         L.git(["commit", "-m", `sync(${env.name}): alterações feitas direto no ambiente`,
-            "-m", `Exportado de ${sourceZip ? zip : env.url} em ${new Date().toISOString()}\nBase: ${hasTag ? tag : "HEAD"} ${base}\n\n${changed}`], { cwd: wt });
+            "-m", `Exportado de ${sourceZip ? zip : env.url} em ${new Date().toISOString()}\nBase: ${baseName} ${base}\n\n${changed}`], { cwd: wt });
         keep = true;
         return { drift: true, installed: true, branch, changed };
     } finally {

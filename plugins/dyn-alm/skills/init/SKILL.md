@@ -16,6 +16,7 @@ Ferramentas: `TOOLS="${CLAUDE_PLUGIN_ROOT}/tools"`.
 
 ## 1. Pré-requisitos (sem perguntar)
 `node --version` (≥ 20), `git --version`, `pac help` (1ª linha = versão), `pac auth list`. Faltando algo ou token expirado (AADSTS700082): explique e pare. Login: sugira `! pac auth create --name dev --environment <url>`.
+GitHub: `node "$TOOLS/github.js" check --json`. Sem `gh` ou sem login **não para o init** — só avise que será preciso na §9 (publicar) e no PR.
 
 ## 2. Detectar zips (sem perguntar)
 - Se `$ARGUMENTS` termina em `.zip`, é o zip da solution e a pasta destino é a pasta atual.
@@ -66,5 +67,14 @@ Depois, na pasta: `npm run build` e mostre versão e pacotes gerados.
 - **Greenfield**: pergunte se quer instalar a solution (vazia) no Dev agora.
 Em seguida `npm run status -- dev`.
 
-## 9. Fechamento
-Mostre: caminho do repo, se o zip de `import/` pode ser apagado (não está no Git), próximos passos (`/dyn-alm:release` para abrir a primeira release, `/dyn-alm:feature` para começar), como publicar no GitHub (`git remote add origin …`, `git push -u origin main`, registrar runner, proteger `main` e `release/*` contra force-push) e os links `docs/processo-dev.md` e `docs/scripts.md`.
+## 9. Publicar no GitHub
+Sem remoto não há PR nem esteira. Faça quando a esteira for GitHub (§3) ou quando a jornada pedir (ação `publish`). Já existe `origin` (`check` → `hasRemote`)? Pule.
+1. `node "$TOOLS/github.js" check --json` (acha o `gh` também fora do PATH: terminal aberto antes da instalação não o enxerga).
+2. Sem `gh` (`gh: null`) → avise que é pré-requisito: o dev instala manualmente (https://cli.github.com; não sugira winget/choco/brew — a empresa restringe) e avisa quando terminar; rode o check de novo. **Não** use `git remote add` com URL inventada.
+3. Sem login (`loggedIn: false`) → rode `node "$TOOLS/github.js" login` **em background** (Bash `run_in_background`, saída redirecionada para um arquivo no scratchpad); leia o arquivo até aparecer o código de uso único e mostre ao usuário: abrir `https://github.com/login/device` e digitar o código. A notificação de término confirma o login. Logado mas `workflowScope: false` → mesma coisa com `login --refresh` (sem o escopo `workflow` o GitHub recusa o push de `.github/workflows/`; o `create` recusa antes de criar o repo).
+4. Pergunte (AskUserQuestion): **nome** — `suggestedName` do check (Recommended) / `<org>/<pasta>` / outro; **visibilidade** — "Privado (Recommended)" / "Público".
+5. Publicar é enviar o código para fora: confirme o resumo (nome, visibilidade, branches `main` + `release/*` abertas + branch atual, tags) e rode `node "$TOOLS/github.js" create <dono/nome> [--public]`. Se a permissão for negada (ex.: modo automático do Claude Code bloqueia upload), **não contorne**: entregue o comando para o usuário rodar com `! dyn-alm github create <dono/nome>` (ou `! node "<caminho absoluto>/github.js" create …`) e explique que ele pode liberar a regra com `/update-config`.
+6. Depois: registrar o runner self-hosted e proteger `main` e `release/*` contra force-push (Settings → Rules).
+
+## 10. Fechamento
+Mostre: caminho do repo, se o zip de `import/` pode ser apagado (não está no Git), próximos passos (`/dyn-alm:release` para abrir a primeira release, `/dyn-alm:feature` para começar), se ainda falta publicar no GitHub (§9) e os links `docs/processo-dev.md` e `docs/scripts.md`.

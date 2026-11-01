@@ -125,6 +125,13 @@ if (!f.release) {
     }
     act("feature-start", "Começar uma feature ou fix", `a partir de ${f.release.branch}`, { skill: "feature", section: "2a" });
 }
+// Sem remoto não há PR nem esteira: publicar vem antes do PR.
+if (!f.hasRemote) {
+    state.warnings.push("Sem remoto origin — PR e esteira precisam do repositório no GitHub (dyn-alm github create <dono>/<nome>)");
+    if (state.actions.some((x) => x.id === "pr")) {
+        state.actions.unshift({ id: "publish", label: "Publicar o repositório no GitHub", why: "sem remoto origin — o PR precisa dele", how: { skill: "init", section: "9" } });
+    }
+}
 finish();
 
 // Comando de terminal de cada ação — é o que o dev sem IA executa.
@@ -142,7 +149,8 @@ function commandFor(id) {
         "commit-test": 'git add src solution && git commit -m "<o que mudou>" && npm run build && npm run deploy -- dev',
         add: "npm run new-webresource -- <prefixo>_/pasta/arquivo.js",
         "test-dev": "npm run build && npm run deploy -- dev",
-        pr: `git push -u origin ${f.branch}   →  abra o PR para ${rel}`,
+        publish: `dyn-alm github create <dono>/${path.basename(cwd)}   (privado; --public se for o caso)`,
+        pr: `dyn-alm github pr --base ${rel}   (sem gh: git push -u origin ${f.branch} e abra o PR para ${rel})`,
         update: rel ? `git merge ${f.release.ref}` : null,
         status: "npm run status -- dev",
         finish: "npm run release:finish",

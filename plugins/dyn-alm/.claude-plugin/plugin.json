@@ -1,6 +1,6 @@
 {
   "name": "dyn-alm",
   "description": "ALM de solutions Dynamics 365 / Dataverse com o Git como fonte da verdade: cria repos (greenfield/brownfield), guia a jornada feature → Dev → PR → release → CoE, e mantém a esteira atualizada.",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "author": { "name": "Fábio Martins" }
 }

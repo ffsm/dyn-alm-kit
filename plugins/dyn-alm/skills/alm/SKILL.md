@@ -22,9 +22,11 @@ Repositórios gerados pelo kit `dyn-alm` seguem um contrato. Antes de agir num d
 - Não edite `solution/` à mão (exceto para resolver conflito de sync); webresource nova sempre por `npm run new-webresource`.
 - Não mova nem apague tags `deployed/*` e `v*`.
 - O mesmo login do `pac auth` (perfil UNIVERSAL) alcança todos os ambientes do tenant. Não assuma que "não logado em prod" = sem acesso.
+- **Criar repo no GitHub, push e PR enviam o código para fora**: confirme antes (nome, visibilidade — privado por padrão). Se a permissão for negada, não contorne: entregue o comando `! dyn-alm github …` para o usuário rodar.
+- Logins interativos (`gh`, `pac`) não rodam no shell do Claude: `github.js login` roda em background e você mostra o código de uso único; `pac auth create` vai como `! …` para o usuário.
 
 ## Comandos
-Do plugin (funcionam em qualquer repo). Sem Claude, os mesmos passos existem na CLI `dyn-alm` (`dyn-alm jornada`, `dyn-alm init`, `dyn-alm feature`, `dyn-alm doctor`, `dyn-alm upgrade`):
+Do plugin (funcionam em qualquer repo). Sem Claude, os mesmos passos existem na CLI `dyn-alm` (`dyn-alm jornada`, `dyn-alm init`, `dyn-alm feature`, `dyn-alm github`, `dyn-alm doctor`, `dyn-alm upgrade`):
 
 | Comando | Para quê |
 |---|---|
@@ -50,6 +52,7 @@ Scripts (`npm run …`): descritos em `docs/scripts.md` de cada repo e em [templ
 - `node "${CLAUDE_PLUGIN_ROOT}/tools/cli.js" <comando>` — a CLI `dyn-alm` (wizard no terminal, sem IA)
 - `node "${CLAUDE_PLUGIN_ROOT}/tools/scaffold.js" …` — cria o repo (usado pelo `/dyn-alm:init`)
 - `node "${CLAUDE_PLUGIN_ROOT}/tools/journey.js" [--json]` — em que etapa da jornada o repo/branch está e quais os próximos passos (só lê git, não acessa o ambiente)
+- `node "${CLAUDE_PLUGIN_ROOT}/tools/github.js" check|login|create <dono/nome>|pr` — `gh` (achado mesmo fora do PATH), login, cria o repo e publica as branches, abre o PR para a release (`dyn-alm github …` no terminal)
 - `node "${CLAUDE_PLUGIN_ROOT}/tools/inspect-solution.js" <zip> [--json]` — lê nome, versão, publisher, prefixo e componentes de um zip (`--find <pasta>` lista zips)
 - `node "${CLAUDE_PLUGIN_ROOT}/tools/upgrade.js" --target <repo> [--apply]` — atualiza arquivos gerenciados (usado pelo `/dyn-alm:upgrade`)
 - Template: `${CLAUDE_PLUGIN_ROOT}/templates/repo/` (placeholders `{{SOLUTION}}`, `{{PREFIX}}`, `{{DEV_URL}}`, `{{REPO}}`)

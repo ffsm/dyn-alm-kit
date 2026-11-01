@@ -6,6 +6,7 @@
 //   dyn-alm feature                          wizard: abre feature/fix a partir da release aberta
 //   dyn-alm inspect <zip> [--json]           o que há num zip de solution
 //   dyn-alm doctor                           checa pré-requisitos e o repo
+//   dyn-alm github check|login|create <dono/nome>|pr   publica o repo no GitHub e abre PRs (via gh)
 //   dyn-alm upgrade [--target <repo>] [--apply]   atualiza scripts/workflows do repo para a versão do kit
 //   dyn-alm template --from <repo> [--bump minor] (mantenedor) regenera o template a partir do repo de referência
 //   dyn-alm version
@@ -161,6 +162,7 @@ async function init() {
     console.log(`\n  ${c.b("Próximos passos")}
   cd "${o.target}"
   ${o.mode === "new" ? "npm run deploy -- dev            (instala a solution no Dev)" : "npm run drift -- dev             (o Dev tem algo mais novo que o repo? se sim: npm run sync -- dev --merge)\n  npm run deploy -- dev            (cria a linha de base deployed/dev)"}
+  dyn-alm github create <dono/nome> (publica no GitHub — PRs e esteira precisam do remoto)
   dyn-alm jornada                  (mostra o próximo passo a qualquer momento)\n`);
 }
 
@@ -191,6 +193,14 @@ function doctor() {
     const p = sh("pac", ["help"]); add(p.ok, "PAC CLI", p.ok ? (p.out.split("\n").find((l) => /Version/i.test(l)) || "").trim() : "", "dotnet tool install --global Microsoft.PowerApps.CLI.Tool");
     const auth = sh("pac", ["auth", "list"]);
     add(auth.ok && /\[\d+\]/.test(auth.out) ? true : false, "Login PAC", auth.ok ? `${(auth.out.match(/\[\d+\]/g) || []).length} perfil(is)` : "", "pac auth create --name dev --environment <url>");
+    // GitHub CLI: pré-requisito instalado manualmente (só avisamos).
+    const ghc = JSON.parse(tool("github.js", ["check", "--json"], { capture: true }).stdout || "{}");
+    add(ghc.gh ? true : "warn", "GitHub CLI (gh)", ghc.ghVersion || "", `${ghc.install} (cria o repo e abre PRs)`);
+    if (ghc.gh) {
+        add(ghc.loggedIn && ghc.workflowScope !== false ? true : "warn", "Login GitHub",
+            ghc.loggedIn ? `${ghc.user}${ghc.workflowScope === false ? " (sem escopo workflow)" : ""}` : "",
+            ghc.loggedIn ? "dyn-alm github login --refresh (o push de .github/workflows precisa)" : "dyn-alm github login");
+    }
     const cfgPath = path.resolve("devops.config.json");
     if (fs.existsSync(cfgPath)) {
         const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
@@ -198,7 +208,7 @@ function doctor() {
         const meta = path.resolve(".dyn-alm", "template.json");
         const v = fs.existsSync(meta) ? JSON.parse(fs.readFileSync(meta, "utf8")).version : null;
         add(v === T.VERSION ? true : "warn", "Versão do template", `${v || "?"} (kit ${T.VERSION})`, "dyn-alm upgrade");
-        add(sh("git", ["remote", "get-url", "origin"]).ok ? true : "warn", "Remoto git", "", "git remote add origin <url> (PRs e esteira precisam)");
+        add(ghc.hasRemote ? true : "warn", "Remoto git", ghc.remoteUrl || "", `dyn-alm github create ${ghc.suggestedName || "<dono/nome>"} (PRs e esteira precisam)`);
         add(sh("git", ["rev-parse", "-q", "--verify", "refs/tags/deployed/dev"]).ok ? true : "warn", "Linha de base no Dev", "tag deployed/dev", "npm run drift -- dev  →  npm run deploy -- dev");
     } else {
         add("warn", "Repositório ALM", "não é (sem devops.config.json)", "dyn-alm init");
@@ -217,6 +227,7 @@ const routes = {
     feature,
     inspect: () => process.exit(tool("inspect-solution.js", rest).status),
     doctor,
+    github: () => process.exit(tool("github.js", rest).status),
     upgrade: () => process.exit(tool("upgrade.js", rest.length ? rest : ["--target", "."]).status),
     template: () => process.exit(tool("build-template.js", rest).status),
     version: () => console.log(T.VERSION),

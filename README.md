@@ -16,7 +16,7 @@ Os scripts da esteira (`npm run build/deploy/sync/status…`) são **copiados pa
 
 ## Instalar
 
-Pré-requisitos: Node 20+ e Git. PAC CLI para falar com o Dataverse (`dotnet tool install --global Microsoft.PowerApps.CLI.Tool`).
+Pré-requisitos: Node 20+ e Git. PAC CLI para falar com o Dataverse (`dotnet tool install --global Microsoft.PowerApps.CLI.Tool`). GitHub CLI para publicar o repo e abrir PRs (instalação manual: https://cli.github.com; depois `dyn-alm github login`). O instalador só avisa o que falta — não instala dependências.
 Claude Code é opcional — sem ele, instala só a CLI.
 
 ```bash
@@ -43,7 +43,9 @@ no Claude Code, abra uma **sessão nova** e digite `/dyn-alm:jornada`.
 dyn-alm jornada          # onde estou e qual o próximo comando
 dyn-alm init             # novo repo: solution nova, zip baixado (coloque em import/) ou direto do Dev
 dyn-alm feature          # nova feature/fix a partir da release aberta
-dyn-alm doctor           # pré-requisitos e saúde do repo
+dyn-alm doctor           # pré-requisitos e saúde do repo (inclui gh, login GitHub e remoto)
+dyn-alm github create ffsm/meu-repo   # cria o repo no GitHub (privado) e publica main, release/* e a branch atual
+dyn-alm github pr        # push da branch + PR para a release aberta
 dyn-alm upgrade          # o que mudaria nos scripts do repo com a versão atual do kit (--apply aplica)
 dyn-alm inspect x.zip    # o que há num zip de solution
 ```
