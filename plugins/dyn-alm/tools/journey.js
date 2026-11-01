@@ -60,12 +60,20 @@ if (f.template && !f.toolsFromKit) {
 f.branch = git("rev-parse", "--abbrev-ref", "HEAD").out;
 f.dirty = git("status", "--porcelain", "--", ...solDirs).out !== "";
 f.hasRemote = git("remote", "get-url", "origin").ok;
+// Traz o que mudou no GitHub (PR mesclado, release que avançou). --offline / DYN_ALM_NO_FETCH pulam.
+if (f.hasRemote && !a.offline && !process.env.DYN_ALM_NO_FETCH) {
+    f.fetched = spawnSync("git", ["fetch", "-q", "--prune", "origin"], { cwd, timeout: 30000 }).status === 0;
+}
 const mainRef = git("rev-parse", "-q", "--verify", "refs/remotes/origin/main").ok ? "origin/main" : "main";
 const RELEASE_RE = /^(?:origin\/)?release\/(\d+\.\d+\.\d+)$/;
 const releases = git("for-each-ref", "--format=%(refname:short)", "refs/heads/release/", "refs/remotes/origin/release/").out
     .split("\n").filter((r) => RELEASE_RE.test(r))
     .filter((r) => !git("merge-base", "--is-ancestor", r, mainRef).ok);
-const relRef = releases.find((r) => !r.startsWith("origin/")) || releases[0] || null;
+// A local, a menos que a do GitHub esteja à frente (ex.: o PR foi mesclado lá e ninguém deu pull).
+const localRel = releases.find((r) => !r.startsWith("origin/"));
+const remoteRel = localRel && releases.find((r) => r === `origin/${localRel}`);
+const relRef = remoteRel && git("rev-list", "--count", `${localRel}..${remoteRel}`).out !== "0"
+    && git("merge-base", "--is-ancestor", localRel, remoteRel).ok ? remoteRel : localRel || releases[0] || null;
 f.release = relRef ? { ref: relRef, branch: relRef.replace(/^origin\//, ""), version: relRef.replace(RELEASE_RE, "$1") } : null;
 f.lastTag = git("tag", "--list", "v*", "--sort=-v:refname").out.split("\n")[0] || null;
 
@@ -106,9 +114,20 @@ if (!f.release) {
         behind: Number(git("rev-list", "--count", `HEAD..${f.release.ref}`).out),
         merged: reachable && !onReleaseLine,
     };
-    if (f.work.merged) {
+    // PR desta branch no GitHub (precisa do gh logado; sem ele, segue só pelo git).
+    f.pr = null;
+    if (f.hasRemote && !a.offline) {
+        const gh = require("./github").findGh();
+        const r = gh ? spawnSync(gh, ["pr", "view", f.branch, "--json", "number,state,url,title,baseRefName"], { cwd, encoding: "utf8", timeout: 30000 }) : null;
+        try { if (r && r.status === 0) f.pr = JSON.parse(r.stdout); } catch { /* sem PR */ }
+    }
+    if (f.work.merged || (f.pr && f.pr.state === "MERGED")) {
         state.stage = 5;
-        act("back-to-release", `Voltar para ${f.release.branch} e atualizar o Dev`, "sua branch já foi mesclada na release", { skill: "jornada", section: "dev-release" });
+        act("back-to-release", `Voltar para ${f.release.branch} e atualizar o Dev`, f.pr && f.pr.state === "MERGED" ? `PR #${f.pr.number} mesclado` : "sua branch já foi mesclada na release", { skill: "jornada", section: "dev-release" });
+    } else if (f.pr && f.pr.state === "OPEN" && !f.dirty) {
+        state.stage = 4;
+        act("pr-wait", `PR #${f.pr.number} aberto — aguardando revisão/merge`, "abre o PR no navegador; depois do merge, rode a jornada de novo", { skill: "jornada", section: "Roteiro" });
+        act("commit-test", "Continuar ajustando (entra no mesmo PR)", "pediram mudança na revisão", { skill: "feature", section: "2a passo 6" });
     } else if (f.dirty || f.work.ahead === 0) {
         state.stage = 2;
         act("commit-test", "Commitar e testar no Dev", f.dirty ? "há alterações não commitadas em src/ ou solution/" : "branch sem commits ainda — edite src/ e commite", { skill: "feature", section: "2a passo 6" });
@@ -138,8 +157,10 @@ if (!f.release) {
 // Sem remoto não há PR nem esteira: publicar vem antes do PR.
 if (!f.hasRemote) {
     state.warnings.push("Sem remoto origin — PR e esteira precisam do repositório no GitHub (dyn-alm github create <dono>/<nome>)");
-    if (state.actions.some((x) => x.id === "pr")) {
-        state.actions.unshift({ id: "publish", label: "Publicar o repositório no GitHub", why: "sem remoto origin — o PR precisa dele", how: { skill: "init", section: "9" } });
+    // logo antes do PR (na etapa 3 o recomendado continua sendo testar no Dev)
+    const prAt = state.actions.findIndex((x) => x.id === "pr");
+    if (prAt >= 0) {
+        state.actions.splice(prAt, 0, { id: "publish", label: "Publicar o repositório no GitHub", why: "sem remoto origin — o PR precisa dele", how: { skill: "init", section: "9" } });
     }
 }
 finish();
@@ -165,26 +186,36 @@ function commandFor(id) {
         status: "npm run status -- dev",
         finish: "npm run release:finish",
         "feature-start": "dyn-alm feature",
+        "pr-wait": f.pr ? `abra ${f.pr.url}` : null,
     }[id] || null;
 }
 
 function finish() {
     for (const x of state.actions) x.cmd = commandFor(x.id);
-    if (a.json) {
-        console.log(JSON.stringify({ ...state, stageName: STAGES[state.stage - 1], stages: STAGES }, null, 2));
-        process.exit(0);
-    }
     const detail = {
         1: f.isRepo ? `${f.solution}${f.release ? ` · release ${f.release.version}` : " · sem release aberta"}` : "repositório ainda não criado",
         2: f.branch && /^(feature|fix)\//.test(f.branch) ? `${f.branch}${f.dirty ? " · alterações não commitadas" : ""}` : "",
         3: f.dev ? `Dev: ${f.dev.version || f.dev.commit}${f.dev.branch ? ` (${f.dev.branch})` : ""}` : "",
+        4: f.pr ? `PR #${f.pr.number} ${{ OPEN: "aberto", MERGED: "mesclado", CLOSED: "fechado" }[f.pr.state] || f.pr.state}` : "",
     };
-    console.log(`\n  Jornada${f.solution ? ` — ${f.solution}` : ""}${f.branch ? ` · ${f.branch}` : ""}\n`);
+    // O que acontece nas etapas que ainda vêm (para o dev ver o caminho inteiro).
+    const HINT = {
+        2: "edite src/ e commite", 3: "build + deploy da sua branch no Dev", 4: "PR da sua branch para a release",
+        5: "deploy da release no Dev + status PRONTO", 6: "o CoE exporta do Dev e leva para Homol/Prod",
+        7: "release:finish — tag + PR da release para a main",
+    };
+    state.map = [`Jornada${f.solution ? ` — ${f.solution}` : ""}${f.branch ? ` · ${f.branch}` : ""}`, ""];
     STAGES.forEach((name, i) => {
         const n = i + 1;
         const mark = n < state.stage ? "✔" : n === state.stage ? "▶" : "○";
-        console.log(`  ${mark} ${n} ${name.padEnd(30)} ${detail[n] || ""}`);
+        const extra = detail[n] || (n > state.stage && HINT[n] ? `\x1b[2m${HINT[n]}\x1b[0m` : "");
+        state.map.push(`${mark} ${n} ${name.padEnd(30)} ${extra}`);
     });
+    if (a.json) {
+        console.log(JSON.stringify({ ...state, stageName: STAGES[state.stage - 1], stages: STAGES }, null, 2));
+        process.exit(0);
+    }
+    console.log(`\n${state.map.map((l) => `  ${l}`).join("\n")}`);
     for (const w of state.warnings) console.log(`\n  ⚠ ${w}`);
     console.log("\n  Próximos passos:");
     state.actions.forEach((x, i) => {

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // dyn-alm — CLI do kit (funciona sem IA). O plugin do Claude Code usa as mesmas ferramentas.
 //
-//   dyn-alm jornada [--json]                 onde estou na jornada e qual o próximo comando
+//   dyn-alm jornada [--status|--json]        wizard: mostra onde você está, pergunta e executa cada passo
 //   dyn-alm init [--zip <arquivo>]           wizard: cria repo ALM (greenfield ou brownfield)
 //   dyn-alm feature                          wizard: abre feature/fix a partir da release aberta
 //   dyn-alm run <scripts/x.js> [args]        roda um script da esteira com as ferramentas do kit (npm scripts do repo)
@@ -14,7 +14,6 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const readline = require("readline");
 const { spawnSync } = require("child_process");
 const T = require("./template");
 
@@ -26,40 +25,8 @@ if (cmd !== "version") require("./selfupdate").autoUpdate();
 
 const tool = (name, args, opts = {}) => spawnSync("node", [path.join(TOOLS, name), ...args], { stdio: opts.capture ? "pipe" : "inherit", encoding: "utf8", cwd: opts.cwd });
 const sh = (c, args, cwd) => { const r = spawnSync(c, args, { encoding: "utf8", cwd }); return { ok: r.status === 0 && !r.error, out: (r.stdout || "").trim() }; };
-const c = { b: (s) => `\x1b[1m${s}\x1b[0m`, dim: (s) => `\x1b[2m${s}\x1b[0m`, cyan: (s) => `\x1b[36m${s}\x1b[0m`, ok: "\x1b[32m✔\x1b[0m", no: "\x1b[31m✖\x1b[0m", warn: "\x1b[33m⚠\x1b[0m" };
-
 // ---------- Perguntas no terminal (funciona com TTY e com entrada redirecionada) ----------
-let lines = null;
-async function readLine(prompt) {
-    if (!lines) lines = readline.createInterface({ input: process.stdin, terminal: false })[Symbol.asyncIterator]();
-    process.stdout.write(prompt);
-    const { value, done } = await lines.next();
-    if (done) T.fail("\nEntrada encerrada antes do fim do wizard");
-    if (!process.stdin.isTTY) process.stdout.write(`${value}\n`);
-    return value.trim();
-}
-async function ask(question, def, validate) {
-    for (;;) {
-        const v = (await readLine(`${c.cyan("?")} ${question}${def ? c.dim(` (${def})`) : ""}: `)) || def || "";
-        const err = validate ? validate(v) : null;
-        if (!err) return v;
-        console.log(`  ${c.no} ${err}`);
-    }
-}
-async function choose(question, options, def = 0) {
-    console.log(`${c.cyan("?")} ${question}`);
-    options.forEach((o, i) => console.log(`  ${c.b(String(i + 1))}) ${o.label}${i === def ? c.dim("  (recomendado)") : ""}${o.hint ? c.dim(`  — ${o.hint}`) : ""}`));
-    for (;;) {
-        const v = await readLine(`  escolha ${c.dim(`[${def + 1}]`)}: `);
-        const n = v === "" ? def + 1 : Number(v);
-        if (n >= 1 && n <= options.length) return options[n - 1].value;
-        console.log(`  ${c.no} digite um número de 1 a ${options.length}`);
-    }
-}
-async function confirm(question, def = true) {
-    const v = (await readLine(`${c.cyan("?")} ${question} ${c.dim(def ? "[S/n]" : "[s/N]")}: `)).toLowerCase();
-    return v === "" ? def : ["s", "sim", "y", "yes"].includes(v);
-}
+const { c, ask, choose, confirm, used } = require("./prompt");
 
 // ---------- Leitura do PAC ----------
 function pacEnvs() {
@@ -224,7 +191,8 @@ function doctor() {
 
 // ---------- roteamento ----------
 const routes = {
-    jornada: () => process.exit(tool("journey.js", rest).status),
+    // Interativo: pergunta e executa cada etapa. --json/--status só informam (scripts, Claude Code).
+    jornada: () => (a.json || a.status ? process.exit(tool("journey.js", rest).status) : require("./wizard").run()),
     journey: () => routes.jornada(),
     init,
     feature,
@@ -240,4 +208,4 @@ if (!cmd || cmd === "help" || cmd === "--help" || !routes[cmd]) {
     console.log(fs.readFileSync(__filename, "utf8").split("\n").slice(1, 13).map((l) => l.replace(/^\/\/ ?/, "")).join("\n"));
     process.exit(cmd && !["help", "--help"].includes(cmd) ? 1 : 0);
 }
-Promise.resolve(routes[cmd]()).then(() => lines && process.exit(0), (e) => T.fail(e.stack || e.message));
+Promise.resolve(routes[cmd]()).then(() => used() && process.exit(0), (e) => T.fail(e.stack || e.message));

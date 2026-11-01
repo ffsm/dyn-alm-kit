@@ -40,7 +40,7 @@ no Claude Code, abra uma **sessão nova** e digite `/dyn-alm:jornada`.
 ## Usar
 
 ```bash
-dyn-alm jornada          # onde estou e qual o próximo comando
+dyn-alm jornada          # wizard: mostra onde você está, pergunta e EXECUTA cada passo até fechar a release (--status só mostra)
 dyn-alm init             # novo repo: solution nova, zip baixado (coloque em import/) ou direto do Dev
 dyn-alm feature          # nova feature/fix a partir da release aberta
 dyn-alm doctor           # pré-requisitos e saúde do repo (inclui gh, login GitHub e remoto)
