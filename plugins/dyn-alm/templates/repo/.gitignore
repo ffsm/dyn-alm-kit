@@ -1,0 +1,8 @@
+out/
+node_modules/
+*.zip
+
+# solution/ guarda só metadados; o conteúdo das webresources vive em src/webresources/
+/solution/WebResources/**
+!/solution/WebResources/**/
+!/solution/WebResources/**/*.data.xml

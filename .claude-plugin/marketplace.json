@@ -1,0 +1,14 @@
+{
+  "name": "dyn-alm-kit",
+  "description": "Kit ALM para solutions Dynamics 365 / Dataverse (uso interno)",
+  "owner": {
+    "name": "Fábio Martins"
+  },
+  "plugins": [
+    {
+      "name": "dyn-alm",
+      "source": "./plugins/dyn-alm",
+      "description": "ALM de solutions Dynamics 365 / Dataverse"
+    }
+  ]
+}

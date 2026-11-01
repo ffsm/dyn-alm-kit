@@ -1,0 +1,36 @@
+# Release — disparado pela tag vX.Y.Z que o `npm run release:finish` cria depois que o CoE
+# levou a versão para produção. Gera o pacote daquele commit a partir do Git e publica no
+# Artifactory como registro rastreável (commit, PRs, hashes). O deploy em Homol/Prod é do CoE.
+name: release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+env:
+  ARTIFACTORY_URL: ${{ vars.ARTIFACTORY_URL }}
+  ARTIFACTORY_TOKEN: ${{ secrets.ARTIFACTORY_TOKEN }}
+
+jobs:
+  package:
+    runs-on: [self-hosted, Windows]
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - run: npm run build
+      - run: npm run release
+      - run: npm run publish
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ github.ref_name }}
+          path: |
+            out/*.zip
+            out/build-info.json
+            out/RELEASE_NOTES.md

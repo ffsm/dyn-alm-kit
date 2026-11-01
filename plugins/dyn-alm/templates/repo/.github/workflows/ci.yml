@@ -1,0 +1,49 @@
+# Esteira da POC — roda num runner self-hosted Windows (sua máquina), que já tem PAC CLI e Node.
+#   PR para release/** ou main → build a partir do Git + artefato anexado ao run (validação)
+#   push em release/**         → build + deploy unmanaged em dev (com trava de drift) + tag deployed/dev
+#                                (o Dev passa a refletir a release, que é o que o CoE vai exportar)
+#   push em main               → só build (main = o que está em produção)
+name: ci
+
+on:
+  pull_request:
+    branches: [main, "release/**"]
+  push:
+    branches: [main, "release/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: dataverse-dev        # um deploy por vez no ambiente dev
+  cancel-in-progress: false
+
+env:
+  PP_APP_ID: ${{ secrets.PP_APP_ID }}
+  PP_CLIENT_SECRET: ${{ secrets.PP_CLIENT_SECRET }}
+  PP_TENANT_ID: ${{ secrets.PP_TENANT_ID }}
+  PP_URL_DEV: ${{ vars.PP_URL_DEV }}
+
+jobs:
+  build:
+    runs-on: [self-hosted, Windows]
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # histórico completo: versão = nº de commits, PRs = git log
+          fetch-tags: true
+
+      - name: Build a partir do Git
+        run: npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: solution-${{ github.sha }}
+          path: |
+            out/*.zip
+            out/build-info.json
+
+      - name: Deploy em dev
+        if: github.event_name == 'push' && startsWith(github.ref_name, 'release/')
+        run: npm run deploy -- dev --push-tag
