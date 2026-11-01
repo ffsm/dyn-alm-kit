@@ -14,27 +14,28 @@ O mesmo kit funciona de três jeitos:
 
 Os scripts da esteira (`npm run build/deploy/sync/status…`) são **copiados para cada repo** gerado — funcionam no CI e para quem não instalou nada.
 
-## Instalar (local, enquanto o kit não está publicado)
+## Instalar
 
-Pré-requisitos: Node 20+, Git, PAC CLI (`dotnet tool install --global Microsoft.PowerApps.CLI.Tool`).
+Pré-requisitos: Node 20+ e Git. PAC CLI para falar com o Dataverse (`dotnet tool install --global Microsoft.PowerApps.CLI.Tool`).
+Claude Code é opcional — sem ele, instala só a CLI.
 
 ```bash
-git clone <onde o kit estiver>   # hoje: C:\Users\Dev\source\repos\dyn-alm-kit
+git clone <onde o kit estiver>      # hoje: C:UsersDevsourceeposdyn-alm-kit (só local)
+cd dyn-alm-kit
+node install.js                     # ou dois cliques em install.cmd
 ```
 
-**CLI** (link global para a pasta — `git pull` no kit já atualiza):
-```bash
-npm install -g C:\Users\Dev\source\repos\dyn-alm-kit
-dyn-alm version
-```
-Sem instalar: `node C:\Users\Dev\source\repos\dyn-alm-kit\plugins\dyn-alm\tools\cli.js <comando>`.
+O instalador confere os pré-requisitos, instala a CLI `dyn-alm` (global, ligada à pasta do kit) e, se houver Claude Code,
+o plugin `dyn-alm`. Pode rodar de novo sem problema.
 
-**Plugin do Claude Code**:
-```bash
-claude plugin marketplace add C:\Users\Dev\source\repos\dyn-alm-kit
-claude plugin install dyn-alm@dyn-alm-kit
-```
-Abra uma sessão nova e digite `/dyn-alm:jornada`.
+| Quero | Comando |
+|---|---|
+| Instalar | `node install.js` (ou `install.cmd`) |
+| Atualizar | `node install.js --update` — `git pull` no kit + plugin |
+| Remover | `node install.js --uninstall` — repos de solution já criados continuam funcionando |
+
+Depois de instalar: no terminal, `dyn-alm jornada` dentro de um repo de solution (ou `dyn-alm init` para criar um);
+no Claude Code, abra uma **sessão nova** e digite `/dyn-alm:jornada`.
 
 ## Usar
 
@@ -89,6 +90,7 @@ dyn-alm inspect x.zip    # o que há num zip de solution
 
 ```
 dyn-alm-kit/
+├── install.js · install.cmd      instalador (instalar / --update / --uninstall)
 ├── package.json                  bin "dyn-alm" → plugins/dyn-alm/tools/cli.js
 ├── .claude-plugin/marketplace.json
 └── plugins/dyn-alm/              ← tudo fica aqui (o Claude Code só copia esta pasta ao instalar)
@@ -104,7 +106,7 @@ dyn-alm-kit/
 1. Evolua e teste no **repo de referência** (hoje `C:\Users\Dev\source\repos\dyn-devops-poc`).
 2. Regenere o template e suba a versão: `dyn-alm template --from <repo-de-referencia> --bump minor`
 3. `claude plugin validate .` e commit + tag (`claude plugin tag plugins/dyn-alm` cria `dyn-alm--vX.Y.Z`).
-4. Quem usa: `git pull` no kit (CLI) e `claude plugin marketplace update dyn-alm-kit` + `claude plugin update dyn-alm@dyn-alm-kit` (plugin).
+4. Quem usa: `node install.js --update`.
 5. Em cada repo de solution: `dyn-alm upgrade` (simula) → `dyn-alm upgrade --target . --apply`.
 
 Sem subir a versão no `plugin.json`, o Claude Code não entrega a mudança para quem já instalou.
@@ -115,6 +117,5 @@ Hoje o kit é **só local**. Quando houver um lugar aprovado (GitHub/Azure DevOp
 ```bash
 git remote add origin <url-aprovada> && git push -u origin main --tags
 ```
-Cada dev, com credencial git salva na máquina: `claude plugin marketplace add <url-aprovada>` + `claude plugin install dyn-alm@dyn-alm-kit`,
-e `npm install -g git+<url-aprovada>` para a CLI. Repos de solution podem registrar o marketplace no `.claude/settings.json`
+Cada dev, com credencial git salva na máquina: `git clone <url-aprovada>` e `node install.js`. Repos de solution podem registrar o marketplace no `.claude/settings.json`
 (`extraKnownMarketplaces`) — cada pessoa ainda instala o plugin uma vez.
