@@ -7,7 +7,7 @@
 //   dyn-alm inspect <zip> [--json]           o que há num zip de solution
 //   dyn-alm doctor                           checa pré-requisitos e o repo
 //   dyn-alm github check|login|create <dono/nome>|pr   publica o repo no GitHub e abre PRs (via gh)
-//   dyn-alm upgrade [--target <repo>] [--apply]   atualiza scripts/workflows do repo para a versão do kit
+//   dyn-alm upgrade [--target <repo>|--all] [--apply]  atualiza os scripts do repo (ou de todos os repos) para o kit
 //   dyn-alm template --from <repo> [--bump minor] (mantenedor) regenera o template a partir do repo de referência
 //   dyn-alm version
 const fs = require("fs");

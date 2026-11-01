@@ -65,6 +65,20 @@ function installCli() {
     ok(`dyn-alm ${v.out} (link para ${KIT}: atualizar o kit atualiza a CLI)`);
 }
 
+// A cópia do plugin no cache do Claude Code é diferente de plugins/dyn-alm? (sem cópia/sem registro = diferente)
+function pluginStale() {
+    const reg = path.join(require("os").homedir(), ".claude", "plugins", "installed_plugins.json");
+    let cache;
+    try { cache = JSON.parse(fs.readFileSync(reg, "utf8")).plugins[PLUGIN][0].installPath; } catch { return true; }
+    const src = path.join(KIT, "plugins", "dyn-alm");
+    const list = (base, dir = base) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+        e.isDirectory() ? list(base, path.join(dir, e.name)) : [path.relative(base, path.join(dir, e.name))]);
+    if (!fs.existsSync(cache)) return true;
+    const a = list(src).sort(), b = list(cache).sort();
+    if (a.join("\n") !== b.join("\n")) return true;
+    return a.some((f) => !fs.readFileSync(path.join(src, f)).equals(fs.readFileSync(path.join(cache, f))));
+}
+
 function installPlugin() {
     step("Plugin do Claude Code");
     const markets = run("claude", ["plugin", "marketplace", "list"]).out;
@@ -77,7 +91,14 @@ function installPlugin() {
     const plugins = run("claude", ["plugin", "list"]).out;
     if (plugins.includes(PLUGIN)) {
         run("claude", ["plugin", "update", PLUGIN]);
-        ok(`plugin ${PLUGIN} já instalado (atualizado)`);
+        // O Claude Code usa uma cópia do plugin (cache) e só a renova quando a versão muda:
+        // se o conteúdo do kit mudou sem subir a versão, reinstala para a cópia ficar igual à pasta.
+        if (pluginStale()) {
+            run("claude", ["plugin", "uninstall", PLUGIN]);
+            const r = run("claude", ["plugin", "install", PLUGIN]);
+            if (!r.ok) fail(`claude plugin install falhou:\n${r.out}`);
+            ok(`plugin ${PLUGIN} reinstalado (a cópia do Claude Code estava diferente da pasta do kit)`);
+        } else ok(`plugin ${PLUGIN} já instalado (igual à pasta do kit)`);
     } else {
         const r = run("claude", ["plugin", "install", PLUGIN]);
         if (!r.ok) fail(`claude plugin install falhou:\n${r.out}`);

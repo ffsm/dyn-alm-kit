@@ -47,6 +47,7 @@ dyn-alm doctor           # pré-requisitos e saúde do repo (inclui gh, login Gi
 dyn-alm github create ffsm/meu-repo   # cria o repo no GitHub (privado) e publica main, release/* e a branch atual
 dyn-alm github pr        # push da branch + PR para a release aberta
 dyn-alm upgrade          # o que mudaria nos scripts do repo com a versão atual do kit (--apply aplica)
+dyn-alm upgrade --all    # todos os repos ALM da pasta (~/source/repos): --apply cria chore/kit-<versão> em cada um e commita
 dyn-alm inspect x.zip    # o que há num zip de solution
 ```
 
@@ -109,7 +110,7 @@ dyn-alm-kit/
 2. Regenere o template e suba a versão: `dyn-alm template --from <repo-de-referencia> --bump minor`
 3. `claude plugin validate .` e commit + tag (`claude plugin tag plugins/dyn-alm` cria `dyn-alm--vX.Y.Z`).
 4. Quem usa: `node install.js --update`.
-5. Em cada repo de solution: `dyn-alm upgrade` (simula) → `dyn-alm upgrade --target . --apply`.
+5. Em todos os repos de solution de uma vez: `dyn-alm upgrade --all` (simula) → `dyn-alm upgrade --all --apply` (branch `chore/kit-<versão>` a partir da release aberta, commit; depois push + PR em cada um). Os scripts ficam copiados em cada repo de propósito: a esteira roda do checkout, commit antigo rebuilda igual e um bug no kit não derruba todos os repos.
 
 Sem subir a versão no `plugin.json`, o Claude Code não entrega a mudança para quem já instalou.
 

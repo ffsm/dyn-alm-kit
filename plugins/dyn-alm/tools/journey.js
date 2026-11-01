@@ -45,6 +45,12 @@ const solDirs = [config.solution.folder, config.solution.webresources];
 f.solution = config.solution.name;
 f.devUrlConfigured = !String(config.environments.dev.url).startsWith("TODO");
 if (!f.devUrlConfigured) state.warnings.push("URL do Dev não configurada em devops.config.json");
+// Scripts da esteira ficam copiados no repo: avisa quando são de outra versão do kit.
+const metaPath = path.join(cwd, ".dyn-alm", "template.json");
+f.template = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, "utf8")).version : null;
+if (f.template && f.template !== T.VERSION) {
+    state.warnings.push(`Scripts do repo são do kit ${f.template}; o kit instalado é ${T.VERSION} — dyn-alm upgrade (ou dyn-alm upgrade --all para todos os repos)`);
+}
 
 // ---------- Git ----------
 f.branch = git("rev-parse", "--abbrev-ref", "HEAD").out;
