@@ -20,7 +20,7 @@ Pré-requisitos: Node 20+ e Git. PAC CLI para falar com o Dataverse (`dotnet too
 Claude Code é opcional — sem ele, instala só a CLI.
 
 ```bash
-git clone <onde o kit estiver>      # hoje: C:UsersDevsourceeposdyn-alm-kit (só local)
+git clone <onde o kit estiver>      # hoje: C:\Users\Dev\source\repos\dyn-alm-kit (só local)
 cd dyn-alm-kit
 node install.js                     # ou dois cliques em install.cmd
 ```
